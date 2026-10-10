@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Image Processing API</title>
+    <link rel="shortcut icon" href="../src/images/favicon.svg" type="image" />
+  </head>
+  <body>
+    <h1>Image Processing API Demo</h1>
+
+    <div>
+      <h2>Upload Image</h2>
+      <input type="file" id="imageFile" accept="image/*" />
+      <button onclick="uploadImage()">Upload</button>
+    </div>
+
+    <div id="result">result:</div>
+
+    <script>
+      const url = 'http://localhost:3000';
+      const resultDiv = document.getElementById('result');
+      async function uploadImage() {
+        const fileInput = document.getElementById('imageFile');
+        const file = fileInput.files[0];
+
+        if (!file) {
+          alert('Please select an image');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        resultDiv.textContent = 'result: uploading...';
+
+        try {
+          const response = await fetch(`${url}/api/upload/responsive`, {
+            method: 'POST',
+            body: formData,
+          });
+          const data = await response.json().catch(() => ({ error: 'Invalid JSON response' }));
+          if (!response.ok) {
+            showError(data.error || `HTTP ${response.status}`, data.details);
+            return;
+          }
+
+          displayResults(data);
+        } catch (error) {
+          console.error('Upload failed:', error);
+           showError(`Cannot reach ${url} or the request was blocked (CORS). See the browser console.`);
+        }
+      }
+
+       function showError(message, details) {
+        resultDiv.textContent =
+          'result: Error: ' +
+          message +
+          (details ? ' (' + (typeof details === 'string' ? details : JSON.stringify(details)) + ')' : '');
+      }
+
+      function displayResults(data) {
+        if (!data || !Array.isArray(data.responsive)) {
+          showError('Unexpected response from the server');
+          return;
+        }
+
+        let html = '<h3>Upload Successful!</h3>';
+        if (data.cached) html += '<p>(served from cache)</p>';
+        html += '<h4>Responsive Images:</h4><ul>';
+
+        data.responsive.forEach(img => {
+          html += `<li>${img.size}: ${img.width}px - <a href="${img.url}" target="_blank">View</a></li>`;
+        });
+
+        html += '</ul>';
+        resultDiv.innerHTML = html;
+      }
+    </script>
+  </body>
+</html>
